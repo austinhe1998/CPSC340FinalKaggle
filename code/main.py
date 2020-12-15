@@ -25,10 +25,10 @@ if __name__ == "__main__":
 
     if question == "2":
         # Data set
-        X_training_filenames = glob(os.path.join('..','train','X','X_*.csv'))
+        X_training_filenames = glob(os.path.join('..','..','train','X','X_*.csv'))
         X_training_dataframes = [pd.read_csv(f) for f in X_training_filenames]
 
-        y_training_filenames = glob(os.path.join('..','train','y','y_*.csv'))
+        y_training_filenames = glob(os.path.join('..','..','train','y','y_*.csv'))
         y_training_dataframes = [pd.read_csv(f) for f in y_training_filenames]
 
         # X_validate_filenames = glob(os.path.join('..','val','X','X_*.csv'))
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         # y_validate_filenames = glob(os.path.join('..','val','y','y_*.csv'))
         # y_validate_dataframes = [pd.read_csv(f) for f in y_validate_filenames]
 
-        X_test_filenames = glob(os.path.join('..','test','X','X_*.csv'))
+        X_test_filenames = glob(os.path.join('..','..','test','X','X_*.csv'))
         X_test_dataframes = [pd.read_csv(f) for f in X_test_filenames]
 
         # X_train = pd.concat(X_training_dataframes, axis=1)
@@ -51,65 +51,49 @@ if __name__ == "__main__":
         # X = X_train.loc[:,[' x0', ' y0', ' x1', ' y1', ' x2', ' y2', ' x3', ' y3', ' x4', ' y4', ' x5', ' y5', ' x6', ' y6', 
         #                     ' x7', ' y7', ' x8', ' y8', ' x9', ' y9']]
         agent_position = 0
-        X = np.zeros((len(X_training_dataframes), 22))
-        X_test = np.zeros((len(X_test_dataframes), 22))
-        y = np.zeros((len(X_training_dataframes), 60))
+        X_x = np.zeros((len(X_training_dataframes), 11))
+        X_y = np.zeros((len(X_training_dataframes), 11))
+        X_test_x = np.zeros((len(X_test_dataframes), 11))
+        X_test_y = np.zeros((len(X_test_dataframes), 11))
+        y_x = np.zeros((len(X_training_dataframes), 30))
+        y_y = np.zeros((len(X_training_dataframes), 30))
 
         for x in range(len(X_training_dataframes)):
             result_x_positions = y_training_dataframes[x].loc[:, ' x'].to_numpy()
             result_y_positions = y_training_dataframes[x].loc[:, ' y'].to_numpy()
-            result_positions = np.concatenate((result_x_positions, result_y_positions))
-            result_positions = np.resize(result_positions, (60,))
-            # print(result_positions.shape)
-            y[x] = result_positions
+            result_x_positions = np.resize(result_x_positions, (30,))
+            result_y_positions = np.resize(result_y_positions, (30,))
+
+            y_x[x] = result_x_positions
+            y_y[x] = result_y_positions
 
             for i in range(10):
                 if X_training_dataframes[x].iloc[0, 6 * i + 2] == " agent":
                     x_positions = X_training_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy()
                     y_positions = X_training_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy()
-                    positions = np.concatenate((x_positions, y_positions))
-                    X[x] = positions
+                    X_x[x] = x_positions
+                    X_y[x] = y_positions
 
                 if x < len(X_test_dataframes) and X_test_dataframes[x].iloc[0, 6 * i + 2] == " agent":
                     x_positions = X_test_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy()
                     y_positions = X_test_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy()
-                    positions = np.concatenate((x_positions, y_positions))
-                    X_test[x] = positions
+                    X_test_x[x] = x_positions
+                    X_test_y[x] = y_positions
 
-        model = NeuralNet([5], max_iter=10000)
-        model.fit(X, y)
 
-        y_hat = model.predict(X_test)
-        print(y_hat.shape)
-        pd.DataFrame(y_hat.flatten()).to_csv("output.csv")
+        model1 = NeuralNet([30], max_iter=10000)
+        model1.fit(X_x, y_x)
 
-        # X = X_train.loc[:, [' x0', ]]
+        y_hat_x = model1.predict(X_test_x).flatten()
 
-        ''' Features to choose from '''
-        # X = data.loc[:,['country_id', 'deaths',
-        #                             #   'cases',
-        #                               'cases_14_100k',
-        #                               'cases_100k'
-        #                               ]]
+        model2 = NeuralNet([30], max_iter=10000)
+        model2.fit(X_y, y_y)
 
-        ''' Choose from Countries for training '''
-        #X = X[(X['country_id']=='CA')|(X['country_id']=='SE')]
+        y_hat_y = model2.predict(X_test_y).flatten()
+        print(y_hat_x)
+        print(y_hat_y)
 
-        ''' Choose K '''
-        # K = 35
-        # mintest = 1000
-        # ans= np.array([9504,9530,9541,9557,9585,9585,9585,9627,9654,9664,9699])
-        #for k in range(K):
-            # Fit weighted least-squares estimator
-        # model = linear_model.MultiFeaturesAutoRegressor(K)
-        # model.fit(X)
 
-        #    currtest = np.sqrt(sklearn.metrics.mean_squared_error(model.predict(X[X['country_id']=='CA'],11), ans))
-        #    print(k)
-        #    if currtest<=mintest:
-        #        mintest = currtest
-        #        print(mintest)
-        #print(np.sqrt(sklearn.metrics.mean_squared_error(r, ans)))
+        y_hat = np.insert(y_hat_y, np.arange(len(y_hat_x)), y_hat_x)
+        pd.DataFrame(y_hat).to_csv("output.csv")
 
-        # r = model.predict(X[X['country_id']=='CA'],5)
-        # print(r)
