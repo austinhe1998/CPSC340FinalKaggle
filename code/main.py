@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from scipy.optimize import approx_fprime
 from sklearn.tree import DecisionTreeClassifier
 import utils
-import linear_model
 import sklearn.metrics
 from glob import glob
 from neural_net import NeuralNet
