@@ -40,21 +40,13 @@ if __name__ == "__main__":
         X_test_filenames = glob(os.path.join('..','..','test','X','X_*.csv'))
         X_test_dataframes = [pd.read_csv(f) for f in X_test_filenames]
 
-        # X_train = pd.concat(X_training_dataframes, axis=1)
-        # y_train = pd.concat(y_training_dataframes, axis=1)
-        # X_validate = pd.concat(X_validate_dataframes, axis=1)
-        # y_validate = pd.concat(y_validate_dataframes, axis=1)
-        # X_test = pd.concat(X_test_dataframes, axis=1)
-
         print("Finished reading and formatting data!")
         
-        # X = X_train.loc[:,[' x0', ' y0', ' x1', ' y1', ' x2', ' y2', ' x3', ' y3', ' x4', ' y4', ' x5', ' y5', ' x6', ' y6', 
-        #                     ' x7', ' y7', ' x8', ' y8', ' x9', ' y9']]
         agent_position = 0
-        X_x = np.zeros((len(X_training_dataframes), 11))
-        X_y = np.zeros((len(X_training_dataframes), 11))
-        X_test_x = np.zeros((len(X_test_dataframes), 11))
-        X_test_y = np.zeros((len(X_test_dataframes), 11))
+        X_x = np.zeros((len(X_training_dataframes), 33))
+        X_y = np.zeros((len(X_training_dataframes), 33))
+        X_test_x = np.zeros((len(X_test_dataframes), 33))
+        X_test_y = np.zeros((len(X_test_dataframes), 33))
         y_x = np.zeros((len(X_training_dataframes), 30))
         y_y = np.zeros((len(X_training_dataframes), 30))
 
@@ -67,21 +59,58 @@ if __name__ == "__main__":
             y_x[x] = result_x_positions
             y_y[x] = result_y_positions
 
+            other_car_limit_train = 2
+            other_car_limit_test = 2
+
+            x_positions = np.array([])
+            y_positions = np.array([])
+
+            x_positions_test = np.array([])
+            y_positions_test = np.array([])
+
+            agent_found_flag = False
+            agent_found_flag_test = False
+
             for i in range(10):
+                
                 if X_training_dataframes[x].iloc[0, 6 * i + 2] == " agent":
-                    x_positions = X_training_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy()
-                    y_positions = X_training_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy()
+                    temp_x = X_training_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy()
+                    temp_y = X_training_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy()
+                    x_positions = np.append(temp_x, x_positions)
+                    y_positions = np.append(temp_y, y_positions)
+                    agent_found_flag = True
+
+                # select 2 non-agent vehicles
+                elif other_car_limit_train > 0:
+                    x_positions = np.append(x_positions, X_training_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy())
+                    y_positions = np.append(y_positions, X_training_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy())
+
+                    other_car_limit_train -= 1
+                
+                elif other_car_limit_train == 0 and agent_found_flag == True:
                     X_x[x] = x_positions
                     X_y[x] = y_positions
 
                 if x < len(X_test_dataframes) and X_test_dataframes[x].iloc[0, 6 * i + 2] == " agent":
-                    x_positions = X_test_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy()
-                    y_positions = X_test_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy()
-                    X_test_x[x] = x_positions
-                    X_test_y[x] = y_positions
+                    temp_x = X_test_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy()
+                    temp_y = X_test_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy()
+                    x_positions_test = np.append(temp_x, x_positions_test)
+                    y_positions_test = np.append(temp_y, y_positions_test)
+                    agent_found_flag_test = True
+                
+                # select 2 non-agent vehicles
+                elif x < len(X_test_dataframes) and other_car_limit_test > 0:
+                    x_positions_test = np.append(x_positions_test, X_test_dataframes[x].iloc[:, 6 * i + 2 + 2].to_numpy())
+                    y_positions_test = np.append(y_positions_test, X_test_dataframes[x].iloc[:, 6 * i + 2 + 3].to_numpy())
+
+                    other_car_limit_test -= 1
+                
+                elif x < len(X_test_dataframes) and other_car_limit_test == 0 and agent_found_flag_test == True:
+                    X_test_x[x] = x_positions_test
+                    X_test_y[x] = y_positions_test
 
 
-        model1 = NeuralNet([30], max_iter=10000)
+        model1 = NeuralNet([50], max_iter=10000)
         model1.fit(X_x, y_x)
 
         y_hat_x = model1.predict(X_test_x).flatten()
@@ -90,9 +119,6 @@ if __name__ == "__main__":
         model2.fit(X_y, y_y)
 
         y_hat_y = model2.predict(X_test_y).flatten()
-        print(y_hat_x)
-        print(y_hat_y)
-
 
         y_hat = np.insert(y_hat_y, np.arange(len(y_hat_x)), y_hat_x)
         pd.DataFrame(y_hat).to_csv("output.csv")
